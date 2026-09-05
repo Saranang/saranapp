@@ -1,429 +1,48 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>บันทึกความดันโลหิต</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#EEF3F1;
-    --card:#FFFFFF;
-    --ink:#16302C;
-    --muted:#5B7A74;
-    --line:#DCE6E2;
-    --sys:#B23A2E;
-    --sys-soft:#F6E4E1;
-    --dia:#2F6F63;
-    --dia-soft:#E2EEEA;
-    --pulse:#A9772E;
-    --pulse-soft:#F2E8D6;
-    --ok:#3A7D5C;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    min-height:100vh;
-    background:var(--bg);
-    background-image:radial-gradient(circle at 15% 8%, rgba(47,111,99,0.07), transparent 45%),
-                      radial-gradient(circle at 85% 92%, rgba(178,58,46,0.06), transparent 45%);
-    font-family:'Noto Sans Thai', sans-serif;
-    color:var(--ink);
-    display:flex;
-    justify-content:center;
-    padding:32px 16px 64px;
-  }
-  .wrap{ width:100%; max-width:460px; }
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
 
-  .masthead{ text-align:center; margin-bottom:22px; }
-  .clock{
-    font-family:'Noto Serif Thai', serif;
-    font-weight:600;
-    font-size:44px;
-    letter-spacing:0.5px;
-    line-height:1.1;
-  }
-  .date-line{
-    color:var(--muted);
-    font-size:14.5px;
-    margin-top:4px;
-  }
-
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:22px 20px;
-    margin-bottom:16px;
-  }
-  .card h2{
-    font-family:'Noto Serif Thai', serif;
-    font-weight:600;
-    font-size:16.5px;
-    margin:0 0 14px;
-  }
-
-  .names{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  .name-btn{
-    border:1.5px solid var(--line);
-    background:#FBFCFB;
-    border-radius:12px;
-    padding:14px 8px;
-    font-family:'Noto Sans Thai', sans-serif;
-    font-size:16px;
-    font-weight:500;
-    color:var(--ink);
-    cursor:pointer;
-    transition:border-color .15s ease, background .15s ease, transform .1s ease;
-  }
-  .name-btn:active{ transform:scale(0.98); }
-  .name-btn.selected{
-    border-color:var(--dia);
-    background:var(--dia-soft);
-    color:var(--dia);
-    font-weight:700;
-  }
-
-  .vitals{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-  }
-  .vital{
-    border-radius:12px;
-    padding:12px 8px 10px;
-    text-align:center;
-    border:1.5px solid var(--line);
-  }
-  .vital.sys{ background:var(--sys-soft); border-color:#E9CAC4; }
-  .vital.dia{ background:var(--dia-soft); border-color:#C9DFD8; }
-  .vital.pulse{ background:var(--pulse-soft); border-color:#E6D3AC; }
-  .vital label{
-    display:block;
-    font-size:12px;
-    font-weight:600;
-    margin-bottom:6px;
-  }
-  .vital.sys label{ color:var(--sys); }
-  .vital.dia label{ color:var(--dia); }
-  .vital.pulse label{ color:var(--pulse); }
-  .vital input{
-    width:100%;
-    border:none;
-    background:transparent;
-    font-family:'Noto Serif Thai', serif;
-    font-size:28px;
-    font-weight:600;
-    text-align:center;
-    color:var(--ink);
-    outline:none;
-    -moz-appearance:textfield;
-  }
-  .vital input::-webkit-outer-spin-button,
-  .vital input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
-  .vital .unit{ font-size:11px; color:var(--muted); margin-top:2px; }
-
-  .badge-row{ margin-top:14px; min-height:26px; display:flex; justify-content:center; }
-  .badge{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-size:13px;
-    font-weight:600;
-    padding:5px 12px;
-    border-radius:999px;
-  }
-  .badge .dot{ width:8px; height:8px; border-radius:50%; }
-
-  .submit-btn{
-    width:100%;
-    border:none;
-    border-radius:14px;
-    background:var(--ink);
-    color:#F3F7F5;
-    font-family:'Noto Sans Thai', sans-serif;
-    font-size:16px;
-    font-weight:600;
-    padding:16px;
-    cursor:pointer;
-    transition:opacity .15s ease, transform .1s ease;
-  }
-  .submit-btn:active{ transform:scale(0.99); }
-  .submit-btn:disabled{ opacity:0.55; cursor:default; }
-
-  .status{
-    text-align:center;
-    font-size:13.5px;
-    margin-top:10px;
-    min-height:18px;
-    color:var(--muted);
-  }
-  .status.err{ color:var(--sys); }
-  .status.ok{ color:var(--ok); }
-
-  .history-title{
-    font-family:'Noto Serif Thai', serif;
-    font-weight:600;
-    font-size:15px;
-    margin:26px 0 10px 4px;
-    color:var(--muted);
-  }
-  .entry{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:13px 16px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:8px;
-    font-size:14px;
-  }
-  .entry .who{ font-weight:700; }
-  .entry .when{ color:var(--muted); font-size:12px; margin-top:1px; }
-  .entry .nums{ font-family:'Noto Serif Thai', serif; font-weight:600; font-size:16px; text-align:right; }
-  .entry .nums .p{ color:var(--pulse); font-size:12.5px; font-family:'Noto Sans Thai', sans-serif; font-weight:600; margin-top:2px; }
-
-  .footnote{
-    text-align:center;
-    font-size:11.5px;
-    color:var(--muted);
-    margin-top:18px;
-    line-height:1.6;
-    padding:0 12px;
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <div class="masthead">
-    <div class="clock" id="clock">--:--</div>
-    <div class="date-line" id="dateLine">กำลังโหลดวันที่…</div>
-  </div>
-
-  <div class="card">
-    <h2>ใครเป็นผู้วัด</h2>
-    <div class="names" id="names">
-      <button class="name-btn" data-name="กือ">กือ</button>
-      <button class="name-btn" data-name="หน่อย">หน่อย</button>
-      <button class="name-btn" data-name="ไนล์">ไนล์</button>
-      <button class="name-btn" data-name="แนน">แนน</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>ค่าที่วัดได้</h2>
-    <div class="vitals">
-      <div class="vital sys">
-        <label>SYS</label>
-        <input type="number" id="sys" inputmode="numeric" placeholder="0">
-        <div class="unit">มม.ปรอท</div>
-      </div>
-      <div class="vital dia">
-        <label>DIA</label>
-        <input type="number" id="dia" inputmode="numeric" placeholder="0">
-        <div class="unit">มม.ปรอท</div>
-      </div>
-      <div class="vital pulse">
-        <label>PULSE</label>
-        <input type="number" id="pulse" inputmode="numeric" placeholder="0">
-        <div class="unit">ครั้ง/นาที</div>
-      </div>
-    </div>
-    <div class="badge-row" id="badgeRow"></div>
-  </div>
-
-  <button class="submit-btn" id="submitBtn">บันทึกลง Google Sheet</button>
-  <div class="status" id="status"></div>
-
-  <div id="historyWrap" style="display:none;">
-    <div class="history-title">รายการที่บันทึกวันนี้</div>
-    <div id="history"></div>
-  </div>
-
-  <div class="footnote">
-    ข้อมูลจะถูกต่อท้ายในชีต "BP" โฟลเดอร์ Claude บน Google Drive ผ่าน Apps Script · ตัวบ่งชี้ระดับความดันเป็นข้อมูลทั่วไป ไม่ใช่คำวินิจฉัยทางการแพทย์
-  </div>
-
-</div>
-
-<script>
-  let selectedName = null;
-  const todaysEntries = [];
-
-  // --- Clock ---
-  const thaiDays = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
-  const thaiMonths = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
-
-  function pad(n){ return n.toString().padStart(2,"0"); }
-
-  function tick(){
-    const now = new Date();
-    document.getElementById("clock").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
-    document.getElementById("dateLine").textContent =
-      "วัน" + thaiDays[now.getDay()] + "ที่ " + now.getDate() + " " + thaiMonths[now.getMonth()] + " " + (now.getFullYear()+543);
-  }
-  tick();
-  setInterval(tick, 1000 * 15);
-
-  function currentDateTimeStrings(){
-    const now = new Date();
-    const dateStr = pad(now.getDate()) + "/" + pad(now.getMonth()+1) + "/" + now.getFullYear();
-    const timeStr = pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
-    return { dateStr, timeStr, now };
-  }
-
-  // --- Name selection ---
-  document.getElementById("names").addEventListener("click", (e) => {
-    const btn = e.target.closest(".name-btn");
-    if(!btn) return;
-    document.querySelectorAll(".name-btn").forEach(b => b.classList.remove("selected"));
-    btn.classList.add("selected");
-    selectedName = btn.dataset.name;
-  });
-
-  // --- BP category badge ---
-  function classify(sys, dia){
-    if(sys >= 180 || dia >= 120) return {label:"วิกฤต ควรพบแพทย์ทันที", color:"#7A2018", soft:"#F3D9D5"};
-    if(sys >= 140 || dia >= 90) return {label:"สูง ระยะที่ 2", color:"#B23A2E", soft:"#F6E4E1"};
-    if(sys >= 130 || dia >= 80) return {label:"สูง ระยะที่ 1", color:"#C06A2E", soft:"#F5E5D6"};
-    if(sys >= 120 && dia < 80) return {label:"เริ่มสูง", color:"#B8823A", soft:"#F2E8D6"};
-    if(sys > 0 && dia > 0) return {label:"ปกติ", color:"#2F6F63", soft:"#E2EEEA"};
-    return null;
-  }
-
-  function updateBadge(){
-    const sys = parseInt(document.getElementById("sys").value, 10);
-    const dia = parseInt(document.getElementById("dia").value, 10);
-    const row = document.getElementById("badgeRow");
-    if(!sys || !dia){ row.innerHTML = ""; return; }
-    const c = classify(sys, dia);
-    if(!c){ row.innerHTML = ""; return; }
-    row.innerHTML = `<span class="badge" style="background:${c.soft};color:${c.color}">
-      <span class="dot" style="background:${c.color}"></span>${c.label}</span>`;
-  }
-  ["sys","dia"].forEach(id => document.getElementById(id).addEventListener("input", updateBadge));
-
-  // --- History rendering ---
-  function renderHistory(){
-    const wrap = document.getElementById("historyWrap");
-    const list = document.getElementById("history");
-    if(todaysEntries.length === 0){ wrap.style.display = "none"; return; }
-    wrap.style.display = "block";
-    list.innerHTML = todaysEntries.slice().reverse().map(e => `
-      <div class="entry">
-        <div>
-          <div class="who">${e.name}</div>
-          <div class="when">${e.date} · ${e.time}</div>
-        </div>
-        <div class="nums">
-          ${e.sys}/${e.dia}
-          <div class="p">${e.pulse} ครั้ง/นาที</div>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  // --- Save to Google Sheet via a Google Apps Script Web App ---
-  // ตั้งค่าครั้งเดียว: นำ URL ที่ได้จากการ Deploy Apps Script (ดูคำแนะนำที่ได้รับแยกต่างหาก) มาใส่แทนค่าด้านล่างนี้
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx1mKCaElcjols-_I8tUnarBjrKBB-Tn8lib68g8R_nrrloruI6NggXAwkiBCabA_D-/exec";
-
-  function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
-
-  async function appendToSheet(row, onRetry){
-    if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_") === 0){
-      throw new Error("ยังไม่ได้ตั้งค่า APPS_SCRIPT_URL ในไฟล์นี้ (ดูขั้นตอนการติดตั้ง)");
-    }
-
-    let attempt = 0;
-    const maxRetries = 3;
-    while(true){
-      let response;
-      try{
-        response = await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(row)
+    if (data.action === 'history') {
+      var values = sheet.getDataRange().getValues();
+      var rows = values.slice(1); // ข้าม header
+      var filtered = rows
+        .filter(function(r){ return String(r[0]) === data.name; })
+        .map(function(r){
+          return {
+            name: r[0],
+            date: formatValue(r[1], 'dd/MM/yyyy'),
+            time: formatValue(r[2], 'HH:mm:ss'),
+            sys: r[3], dia: r[4], pulse: r[5]
+          };
         });
-      }catch(networkErr){
-        if(attempt >= maxRetries) throw new Error("เชื่อมต่อเครือข่ายไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่");
-        attempt++;
-        if(onRetry) onRetry(attempt, maxRetries);
-        await sleep(1500 * attempt);
-        continue;
-      }
-
-      if(response.status === 429 || response.status === 503){
-        if(attempt >= maxRetries) throw new Error("ระบบไม่ว่าง กรุณาลองใหม่อีกครั้ง (" + response.status + ")");
-        attempt++;
-        if(onRetry) onRetry(attempt, maxRetries);
-        await sleep(1500 * attempt);
-        continue;
-      }
-
-      if(!response.ok){
-        throw new Error("เชื่อมต่อไม่สำเร็จ (" + response.status + ")");
-      }
-
-      const data = await response.json();
-      if(!data.success){
-        throw new Error(data.error || "บันทึกไม่สำเร็จ");
-      }
-      return;
+      return ContentService.createTextOutput(JSON.stringify({success: true, entries: filtered}))
+        .setMimeType(ContentService.MimeType.JSON);
     }
+
+    var targetRow = sheet.getLastRow() + 1;
+    // บังคับคอลัมน์ B (วันที่) และ C (เวลา) ให้เป็น Plain Text ก่อนใส่ค่า
+    // เพื่อไม่ให้ Sheets แปลงเป็น Date แล้วคิดเขตเวลาผิด
+    sheet.getRange(targetRow, 2, 1, 2).setNumberFormat('@');
+    sheet.getRange(targetRow, 1, 1, 6).setValues(
+      [[data.name, data.date, data.time, data.sys, data.dia, data.pulse]]
+    );
+
+    return ContentService.createTextOutput(JSON.stringify({success: true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({success: false, error: err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
   }
+}
 
-  document.getElementById("submitBtn").addEventListener("click", async () => {
-    const statusEl = document.getElementById("status");
-    const btn = document.getElementById("submitBtn");
-    const sys = document.getElementById("sys").value;
-    const dia = document.getElementById("dia").value;
-    const pulse = document.getElementById("pulse").value;
-
-    if(!selectedName){
-      statusEl.textContent = "กรุณาเลือกชื่อผู้วัด";
-      statusEl.className = "status err";
-      return;
-    }
-    if(!sys || !dia || !pulse){
-      statusEl.textContent = "กรุณากรอกค่า Sys, Dia และ Pulse ให้ครบ";
-      statusEl.className = "status err";
-      return;
-    }
-
-    const { dateStr, timeStr } = currentDateTimeStrings();
-    const row = { name: selectedName, date: dateStr, time: timeStr, sys, dia, pulse };
-
-    btn.disabled = true;
-    statusEl.className = "status";
-    statusEl.textContent = "กำลังบันทึกลง Google Sheet…";
-
-    try{
-      await appendToSheet(row, (attempt, max) => {
-        statusEl.textContent = "ระบบไม่ว่าง กำลังลองใหม่ (" + attempt + "/" + max + ")…";
-      });
-      statusEl.textContent = "บันทึกสำเร็จ";
-      statusEl.className = "status ok";
-      todaysEntries.push(row);
-      renderHistory();
-      document.getElementById("sys").value = "";
-      document.getElementById("dia").value = "";
-      document.getElementById("pulse").value = "";
-      updateBadge();
-    }catch(err){
-      statusEl.textContent = "บันทึกไม่สำเร็จ: " + err.message;
-      statusEl.className = "status err";
-    }finally{
-      btn.disabled = false;
-    }
-  });
-</script>
-</body>
-</html>
+function formatValue(value, pattern) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, 'Asia/Bangkok', pattern);
+  }
+  return value; // เป็นข้อความล้วนอยู่แล้ว ใช้ค่าเดิมได้เลย
+}
